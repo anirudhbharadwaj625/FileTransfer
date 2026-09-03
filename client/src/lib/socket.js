@@ -3,14 +3,23 @@ import { io } from 'socket.io-client';
 let socket = null;
 let serverUrl = null;
 
+function isProduction() {
+  return import.meta.env.PROD;
+}
+
 export async function fetchServerUrl() {
   if (serverUrl) return serverUrl;
-  try {
-    const res = await fetch('/local-ip');
-    const data = await res.json();
-    serverUrl = `http://${data.ip}:${data.port}`;
-  } catch {
+
+  if (isProduction()) {
     serverUrl = window.location.origin;
+  } else {
+    try {
+      const res = await fetch('/local-ip');
+      const data = await res.json();
+      serverUrl = data.url || `http://${data.ip}:${data.port}`;
+    } catch {
+      serverUrl = window.location.origin;
+    }
   }
   return serverUrl;
 }

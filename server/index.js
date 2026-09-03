@@ -3,9 +3,13 @@ const http = require('http');
 const { Server } = require('socket.io');
 const cors = require('cors');
 const os = require('os');
+const path = require('path');
 
 const app = express();
 app.use(cors());
+
+const clientDist = path.join(__dirname, '..', 'client', 'dist');
+app.use(express.static(clientDist));
 
 const server = http.createServer(app);
 const io = new Server(server, {
@@ -174,11 +178,21 @@ function getLocalIp() {
 }
 
 app.get('/local-ip', (req, res) => {
-  res.json({ ip: getLocalIp(), port: PORT });
+  if (process.env.RAILWAY_STATIC_URL || process.env.PORT) {
+    const host = req.headers.host || `localhost:${PORT}`;
+    const protocol = req.headers['x-forwarded-proto'] || 'http';
+    res.json({ ip: host.split(':')[0], port: host.includes(':') ? host.split(':')[1] : 80, url: `${protocol}://${host}` });
+  } else {
+    res.json({ ip: getLocalIp(), port: PORT });
+  }
 });
 
 app.get('/health', (req, res) => {
   res.json({ status: 'ok', rooms: rooms.size });
+});
+
+app.get('*', (req, res) => {
+  res.sendFile(path.join(clientDist, 'index.html'));
 });
 
 const PORT = process.env.PORT || 3001;
